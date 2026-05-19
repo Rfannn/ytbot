@@ -1,12 +1,12 @@
 import aiosqlite
 import os
+from config import DATA_DIR
 
-DB_DIR = "data"
-DB_PATH = os.path.join(DB_DIR, "bot.db")
+DB_PATH = os.path.join(DATA_DIR, "bot.db")
 
 
 async def init_db():
-    os.makedirs(DB_DIR, exist_ok=True)
+    os.makedirs(DATA_DIR, exist_ok=True)
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         await db.executescript("""

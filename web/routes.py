@@ -125,6 +125,23 @@ async def admin_settings_save(
     return render("admin/settings.html", settings={"openai_key": openai_key, "webhook_url": webhook_url}, saved=True)
 
 
+@router.get("/admin/cookies-status")
+async def cookies_status():
+    from bot.youtube import COOKIES_FILE
+    exists = os.path.exists(COOKIES_FILE)
+    size = os.path.getsize(COOKIES_FILE) if exists else 0
+    first_line = ""
+    if exists:
+        with open(COOKIES_FILE) as f:
+            first_line = f.readline().strip()
+    return JSONResponse({
+        "exists": exists,
+        "size": size,
+        "path": COOKIES_FILE,
+        "first_line": first_line,
+    })
+
+
 @router.post("/admin/upload-cookies")
 async def upload_cookies(cookies: UploadFile = File(...)):
     from bot.youtube import COOKIES_FILE

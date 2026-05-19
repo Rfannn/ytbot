@@ -1,16 +1,18 @@
 import os
 import yt_dlp
 import uuid
-from config import DOWNLOAD_DIR
+from config import DOWNLOAD_DIR, DATA_DIR
 
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
-COOKIES_FILE = os.path.join(DOWNLOAD_DIR, "..", "cookies.txt")
+COOKIES_FILE = os.path.join(DATA_DIR, "cookies.txt")
 
 
 def _cookies_opts():
     if os.path.exists(COOKIES_FILE):
+        print(f"[youtube] Using cookies from {COOKIES_FILE}")
         return {"cookiefile": COOKIES_FILE}
+    print(f"[youtube] No cookies file at {COOKIES_FILE}")
     return {}
 
 
@@ -53,8 +55,6 @@ async def download_yt(url: str, quality: str = "audio"):
     else:
         opts = _get_ydl_opts("best", "mp4")
 
-    opts["paths"] = {"home": DOWNLOAD_DIR}
-
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=True)
         file_path = ydl.prepare_filename(info)
@@ -67,6 +67,6 @@ async def download_yt(url: str, quality: str = "audio"):
             return file_path, info.get("title", "video")
         for f in os.listdir(DOWNLOAD_DIR):
             p = os.path.join(DOWNLOAD_DIR, f)
-            if os.path.isfile(p) and f != "cookies.txt":
+            if os.path.isfile(p):
                 return p, info.get("title", "video")
         return None, None
