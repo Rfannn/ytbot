@@ -26,7 +26,8 @@ async def get_video_info(url: str):
             "thumbnail": yt.thumbnail_url,
             "url": url,
         }
-    except Exception:
+    except Exception as e:
+        print(f"[youtube] pytubefix info failed: {e}")
         ydl_opts = {"quiet": True, "no_warnings": True}
         if os.path.exists(COOKIES_FILE):
             ydl_opts["cookiefile"] = COOKIES_FILE
@@ -43,22 +44,31 @@ async def get_video_info(url: str):
 async def download_yt(url: str, quality: str = "audio"):
     try:
         from pytubefix import YouTube
-        from pytubefix.cli import on_progress
 
-        yt = YouTube(url, on_progress_callback=on_progress)
+        yt = YouTube(url)
 
         if quality == "audio":
             stream = yt.streams.filter(only_audio=True).first()
         elif quality == "720p":
-            stream = yt.streams.filter(res="720p").first() or yt.streams.filter(res="480p").first() or yt.streams.get_highest_resolution()
+            stream = yt.streams.filter(res="720p").first()
+            if not stream:
+                stream = yt.streams.filter(res="480p").first()
+            if not stream:
+                stream = yt.streams.get_highest_resolution()
         elif quality == "1080p":
-            stream = yt.streams.filter(res="1080p").first() or yt.streams.get_highest_resolution()
+            stream = yt.streams.filter(res="1080p").first()
+            if not stream:
+                stream = yt.streams.filter(res="720p").first()
+            if not stream:
+                stream = yt.streams.get_highest_resolution()
         else:
             stream = yt.streams.get_highest_resolution()
 
         if stream:
+            print(f"[youtube] pytubefix downloading: {stream}")
             file_path = stream.download(output_path=DOWNLOAD_DIR)
-            return file_path, yt.title
+            if os.path.exists(file_path):
+                return file_path, yt.title
     except Exception as e:
         print(f"[youtube] pytubefix failed: {e}")
 
@@ -92,7 +102,7 @@ async def _download_ytdlp(url: str, quality: str = "audio"):
                 if found:
                     return found, info.get("title", "video")
         except Exception as e:
-            print(f"[youtube] Format {fmt} failed: {e}")
+            print(f"[youtube] yt-dlp format {fmt} failed: {e}")
             continue
 
     return None, None
