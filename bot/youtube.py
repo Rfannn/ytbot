@@ -16,19 +16,26 @@ def _cookies_opts():
     return {}
 
 
+def _base_opts():
+    return {
+        "quiet": True,
+        "no_warnings": True,
+        "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
+    }
+
+
 def _get_ydl_opts(format_spec: str, ext: str):
     opts = {
         "format": format_spec,
         "outtmpl": os.path.join(DOWNLOAD_DIR, f"{uuid.uuid4()}.%(ext)s"),
-        "quiet": True,
-        "no_warnings": True,
     }
+    opts.update(_base_opts())
     opts.update(_cookies_opts())
     return opts
 
 
 async def get_video_info(url: str):
-    ydl_opts = {"quiet": True, "no_warnings": True}
+    ydl_opts = _base_opts()
     ydl_opts.update(_cookies_opts())
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
