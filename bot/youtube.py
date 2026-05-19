@@ -6,7 +6,7 @@ from config import DOWNLOAD_DIR, DATA_DIR
 
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
-COOKIES_FILE = os.path.join(DATA_DIR, "cookies.txt")
+COOKIES_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "cookies.txt")
 
 PIPED_INSTANCES = [
     "https://pipedapi.kavin.rocks",
