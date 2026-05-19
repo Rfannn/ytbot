@@ -169,18 +169,9 @@ def _has_cookies() -> bool:
 
 
 async def _try_ytdlp(url: str, quality: str = "audio"):
+    formats = ["best[ext=mp4]/best", "worst/best"]
     if quality == "audio":
-        formats = ["bestaudio/best", "bestaudio"]
-        sort = ["acodec:aac"]
-    elif quality == "1080p":
-        formats = ["bv*+ba/b", "bestvideo+bestaudio/best", "best"]
-        sort = ["res:1080", "vcodec:h264", "acodec:aac"]
-    elif quality == "720p":
-        formats = ["bv*+ba/b", "bestvideo+bestaudio/best", "best"]
-        sort = ["res:720", "vcodec:h264", "acodec:aac"]
-    else:
-        formats = ["bv*+ba/b", "bestvideo+bestaudio/best", "best"]
-        sort = ["vcodec:h264", "acodec:aac"]
+        formats = ["bestaudio[ext=m4a]/bestaudio/best", "worstaudio/best"]
     clients = ["android_embedded", "android", "web", "tv", "ios", "web_creator", "music"]
     cookies = _has_cookies()
     for client in clients:
@@ -189,7 +180,6 @@ async def _try_ytdlp(url: str, quality: str = "audio"):
                 _log(f"Trying yt-dlp client={client} fmt={fmt}{' (with cookies)' if cookies else ''}")
                 opts = {
                     "format": fmt,
-                    "format_sort": sort,
                     "outtmpl": os.path.join(DOWNLOAD_DIR, f"{uuid.uuid4()}.%(ext)s"),
                     "quiet": True,
                     "no_warnings": True,

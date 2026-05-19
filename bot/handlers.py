@@ -61,7 +61,7 @@ async def _download_bale_file(file_id: str) -> bytes | None:
         file_path = file_info.get("result", {}).get("file_path")
         if not file_path:
             return None
-        url = get_file_link(file_path)
+        url = await get_file_link(file_path)
         async with httpx.AsyncClient(timeout=30) as client:
             r = await client.get(url)
             if r.status_code == 200:
