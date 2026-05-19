@@ -5,18 +5,29 @@ from config import DOWNLOAD_DIR
 
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
+COOKIES_FILE = os.path.join(DOWNLOAD_DIR, "..", "cookies.txt")
+
+
+def _cookies_opts():
+    if os.path.exists(COOKIES_FILE):
+        return {"cookiefile": COOKIES_FILE}
+    return {}
+
 
 def _get_ydl_opts(format_spec: str, ext: str):
-    return {
+    opts = {
         "format": format_spec,
         "outtmpl": os.path.join(DOWNLOAD_DIR, f"{uuid.uuid4()}.%(ext)s"),
         "quiet": True,
         "no_warnings": True,
     }
+    opts.update(_cookies_opts())
+    return opts
 
 
 async def get_video_info(url: str):
     ydl_opts = {"quiet": True, "no_warnings": True}
+    ydl_opts.update(_cookies_opts())
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
         return {
@@ -42,6 +53,8 @@ async def download_yt(url: str, quality: str = "audio"):
     else:
         opts = _get_ydl_opts("best", "mp4")
 
+    opts["paths"] = {"home": DOWNLOAD_DIR}
+
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=True)
         file_path = ydl.prepare_filename(info)
@@ -54,6 +67,6 @@ async def download_yt(url: str, quality: str = "audio"):
             return file_path, info.get("title", "video")
         for f in os.listdir(DOWNLOAD_DIR):
             p = os.path.join(DOWNLOAD_DIR, f)
-            if os.path.isfile(p):
+            if os.path.isfile(p) and f != "cookies.txt":
                 return p, info.get("title", "video")
         return None, None

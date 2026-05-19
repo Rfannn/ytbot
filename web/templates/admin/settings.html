@@ -3,19 +3,29 @@
 {% block content %}
 <div class="max-w-2xl mx-auto py-8">
     <h1 class="text-3xl font-bold mb-6">⚙️ Bot Settings</h1>
-    <form method="POST" action="/admin/settings" class="space-y-4">
+
+    <form method="POST" action="/admin/settings" class="space-y-4 mb-8">
         <div>
             <label class="block text-gray-400 mb-1">OpenAI API Key</label>
             <input type="password" name="openai_key" value="{{ settings.openai_key or '' }}"
                    class="w-full p-3 rounded bg-gray-800 border border-gray-700 focus:border-purple-500 outline-none">
         </div>
-        <div>
-            <label class="block text-gray-400 mb-1">Webhook URL</label>
-            <input type="url" name="webhook_url" value="{{ settings.webhook_url or '' }}"
-                   class="w-full p-3 rounded bg-gray-800 border border-gray-700 focus:border-purple-500 outline-none">
-        </div>
         <button type="submit" class="p-3 bg-purple-600 rounded hover:bg-purple-500 font-semibold">Save Settings</button>
     </form>
+
+    <h2 class="text-xl font-bold mb-4">🍪 YouTube Cookies</h2>
+    <p class="text-gray-400 text-sm mb-4">Upload a <code>cookies.txt</code> file to bypass YouTube's bot detection. <a href="https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp" class="text-purple-400" target="_blank">How to get cookies</a></p>
+    <form method="POST" action="/admin/upload-cookies" enctype="multipart/form-data" class="space-y-4">
+        <input type="file" name="cookies" accept=".txt"
+               class="w-full p-3 rounded bg-gray-800 border border-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-purple-600 file:text-white hover:file:bg-purple-500">
+        <button type="submit" class="p-3 bg-purple-600 rounded hover:bg-purple-500 font-semibold">Upload Cookies</button>
+    </form>
+    {% if cookies_status %}
+    <div class="mt-4 p-3 rounded {{ 'bg-green-900/50 border border-green-700 text-green-300' if cookies_status.success else 'bg-red-900/50 border border-red-700 text-red-300' }}">
+        {{ cookies_status.message }}
+    </div>
+    {% endif %}
+
     {% if saved %}
     <div class="mt-4 p-3 bg-green-900/50 border border-green-700 rounded text-green-300">Settings saved!</div>
     {% endif %}
