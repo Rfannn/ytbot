@@ -20,7 +20,7 @@ def _base_opts():
     return {
         "quiet": True,
         "no_warnings": True,
-        "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
+        "extractor_args": {"youtube": {"player_client": ["android", "tv"]}},
     }
 
 
