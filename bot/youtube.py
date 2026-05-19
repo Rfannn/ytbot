@@ -1,11 +1,16 @@
 import os
 import yt_dlp
 import uuid
+import httpx
 from config import DOWNLOAD_DIR, DATA_DIR
 
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 COOKIES_FILE = os.path.join(DATA_DIR, "cookies.txt")
+
+
+def _log(msg: str):
+    print(f"[youtube] {msg}")
 
 
 def _find_downloaded_file():
@@ -16,93 +21,93 @@ def _find_downloaded_file():
     return None
 
 
+def _ydl_opts(format_spec: str, player_client: str = "web"):
+    opts = {
+        "format": format_spec,
+        "outtmpl": os.path.join(DOWNLOAD_DIR, f"{uuid.uuid4()}.%(ext)s"),
+        "quiet": True,
+        "no_warnings": True,
+        "extractor_args": {"youtube": {"player_client": [player_client]}},
+    }
+    if os.path.exists(COOKIES_FILE):
+        opts["cookiefile"] = COOKIES_FILE
+    return opts
+
+
+def _try_ytdlp(url: str, format_spec: str, player_client: str = "web"):
+    opts = _ydl_opts(format_spec, player_client)
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        info = ydl.extract_info(url, download=True)
+        file_path = ydl.prepare_filename(info)
+        if os.path.exists(file_path):
+            return file_path, info.get("title", "video")
+        found = _find_downloaded_file()
+        if found:
+            return found, info.get("title", "video")
+    return None, None
+
+
+async def _try_cobalt_api(url: str):
+    _log("Trying cobalt.tools API...")
+    async with httpx.AsyncClient(timeout=120) as client:
+        r = await client.post(
+            "https://api.cobalt.tools/api/json",
+            json={"url": url, "vCodec": "h264", "vQuality": "720"},
+            headers={"Accept": "application/json"},
+        )
+        data = r.json()
+        if data.get("url"):
+            _log(f"cobalt returned URL: {data['url']}")
+            r2 = await client.get(data["url"], follow_redirects=True, timeout=120)
+            if r2.status_code == 200:
+                ext = ".mp4"
+                filename = f"{uuid.uuid4()}{ext}"
+                filepath = os.path.join(DOWNLOAD_DIR, filename)
+                with open(filepath, "wb") as f:
+                    f.write(r2.content)
+                return filepath, "YouTube Video"
+    return None, None
+
+
 async def get_video_info(url: str):
-    try:
-        from pytubefix import YouTube
-        yt = YouTube(url)
-        return {
-            "title": yt.title,
-            "duration": yt.length,
-            "thumbnail": yt.thumbnail_url,
-            "url": url,
-        }
-    except Exception as e:
-        print(f"[youtube] pytubefix info failed: {e}")
-        ydl_opts = {"quiet": True, "no_warnings": True}
-        if os.path.exists(COOKIES_FILE):
-            ydl_opts["cookiefile"] = COOKIES_FILE
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            return {
-                "title": info.get("title", "Unknown"),
-                "duration": info.get("duration", 0),
-                "thumbnail": info.get("thumbnail", ""),
-                "url": url,
-            }
+    for client in ["web", "android", "tv", "ios"]:
+        try:
+            opts = _ydl_opts("best", client)
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+                return {
+                    "title": info.get("title", "Unknown"),
+                    "duration": info.get("duration", 0),
+                    "thumbnail": info.get("thumbnail", ""),
+                    "url": url,
+                }
+        except Exception as e:
+            _log(f"info client={client} failed: {e}")
+    return {"title": "Unknown", "duration": 0, "thumbnail": "", "url": url}
 
 
 async def download_yt(url: str, quality: str = "audio"):
-    try:
-        from pytubefix import YouTube
-
-        yt = YouTube(url)
-
-        if quality == "audio":
-            stream = yt.streams.filter(only_audio=True).first()
-        elif quality == "720p":
-            stream = yt.streams.filter(res="720p").first()
-            if not stream:
-                stream = yt.streams.filter(res="480p").first()
-            if not stream:
-                stream = yt.streams.get_highest_resolution()
-        elif quality == "1080p":
-            stream = yt.streams.filter(res="1080p").first()
-            if not stream:
-                stream = yt.streams.filter(res="720p").first()
-            if not stream:
-                stream = yt.streams.get_highest_resolution()
-        else:
-            stream = yt.streams.get_highest_resolution()
-
-        if stream:
-            print(f"[youtube] pytubefix downloading: {stream}")
-            file_path = stream.download(output_path=DOWNLOAD_DIR)
-            if os.path.exists(file_path):
-                return file_path, yt.title
-    except Exception as e:
-        print(f"[youtube] pytubefix failed: {e}")
-
-    print("[youtube] Falling back to yt-dlp...")
-    return await _download_ytdlp(url, quality)
-
-
-async def _download_ytdlp(url: str, quality: str = "audio"):
     if quality == "audio":
-        formats = ["bestaudio", "best"]
+        fmt = "bestaudio"
     else:
-        formats = ["best", "worst"]
+        fmt = "best"
 
-    for fmt in formats:
+    clients = ["web", "android", "tv", "ios", "web_creator"]
+    for client in clients:
         try:
-            opts = {
-                "format": fmt,
-                "outtmpl": os.path.join(DOWNLOAD_DIR, f"{uuid.uuid4()}.%(ext)s"),
-                "quiet": True,
-                "no_warnings": True,
-                "extractor_args": {"youtube": {"player_client": ["web"]}},
-            }
-            if os.path.exists(COOKIES_FILE):
-                opts["cookiefile"] = COOKIES_FILE
-            with yt_dlp.YoutubeDL(opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                file_path = ydl.prepare_filename(info)
-                if os.path.exists(file_path):
-                    return file_path, info.get("title", "video")
-                found = _find_downloaded_file()
-                if found:
-                    return found, info.get("title", "video")
+            _log(f"Trying yt-dlp client={client} fmt={fmt}")
+            result = _try_ytdlp(url, fmt, client)
+            if result[0]:
+                _log(f"SUCCESS with client={client}")
+                return result
         except Exception as e:
-            print(f"[youtube] yt-dlp format {fmt} failed: {e}")
-            continue
+            _log(f"client={client} failed: {e}")
 
+    _log("All yt-dlp clients failed, trying cobalt API...")
+    cobalt_result = await _try_cobalt_api(url)
+    if cobalt_result[0]:
+        _log("SUCCESS with cobalt API")
+        return cobalt_result
+
+    _log("All methods failed")
     return None, None
