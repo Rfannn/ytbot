@@ -176,8 +176,9 @@ async def _handle_yt_download(chat_id, msg_id, bale_id, url, quality):
     await edit_message_text(chat_id, msg_id, f"⏳ Downloading {quality}...")
     filepath, title = await download_yt(url, quality)
     if filepath and os.path.exists(filepath):
+        fname = os.path.basename(filepath)
         with open(filepath, "rb") as f:
-            await send_document(chat_id, f.read(), caption=f"🎬 {title}")
+            await send_document(chat_id, f.read(), caption=f"🎬 {title}", filename=fname)
         cleanup_file(filepath)
         await log_stat("youtube", bale_id, f"{title} ({quality})")
     else:
@@ -191,8 +192,10 @@ async def _download_and_send(chat_id, url, bale_id):
         await send_message(chat_id, f"❌ {error}")
         return
     if filepath and os.path.exists(filepath):
+        fname = os.path.basename(filepath)
+        sz = f"{size / 1024 / 1024:.1f} MB" if size > 1024 * 1024 else f"{size / 1024:.1f} KB"
         with open(filepath, "rb") as f:
-            await send_document(chat_id, f.read(), caption=f"📁 Downloaded file")
+            await send_document(chat_id, f.read(), caption=f"📁 {fname} ({sz})", filename=fname)
         cleanup_file(filepath)
         await log_stat("filedl", bale_id, url[:100])
     else:

@@ -33,9 +33,9 @@ async def send_photo(chat_id, photo, caption=None, reply_markup=None):
     return await _req("sendPhoto", **kwargs)
 
 
-async def send_document(chat_id, document, caption=None, reply_markup=None):
+async def send_document(chat_id, document, caption=None, reply_markup=None, filename="file"):
     url = f"{BASE}/sendDocument"
-    files = {"document": ("file", document)}
+    files = {"document": (filename, document)}
     data = {"chat_id": str(chat_id)}
     if caption:
         data["caption"] = caption

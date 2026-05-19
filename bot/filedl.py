@@ -1,4 +1,5 @@
 import os
+import re
 import httpx
 import uuid
 from config import DOWNLOAD_DIR, MAX_FILE_SIZE
@@ -19,8 +20,11 @@ async def download_file(url: str):
         if r.status_code != 200:
             return None, f"Failed to download (HTTP {r.status_code})", None, None
 
-        ext = _ext_from_url(url, content_type)
-        filename = f"{uuid.uuid4()}{ext}"
+        filename = _extract_filename(r.headers, url, content_type)
+        if not filename:
+            ext = _ext_from_url(url, content_type)
+            filename = f"{uuid.uuid4()}{ext}"
+
         filepath = os.path.join(DOWNLOAD_DIR, filename)
 
         with open(filepath, "wb") as f:
@@ -29,8 +33,29 @@ async def download_file(url: str):
         return filepath, None, content_type, len(r.content)
 
 
+def _extract_filename(headers, url: str, content_type: str) -> str:
+    cd = headers.get("Content-Disposition", "")
+    match = re.search(r'filename\*?="?([^";]+)"?', cd)
+    if match:
+        name = match.group(1).strip()
+        if name:
+            return name
+
+    from urllib.parse import urlparse
+    path = urlparse(url).path
+    if "/" in path:
+        name = path.rsplit("/", 1)[-1]
+        if name and "." in name:
+            import html
+            return html.unquote(name)
+
+    ext = _ext_from_url(url, content_type)
+    if ext:
+        return f"download{ext}"
+    return ""
+
+
 def _ext_from_url(url: str, content_type: str) -> str:
-    import re
     match = re.search(r"\.([a-zA-Z0-9]+)(?:\?|$)", url)
     if match:
         return f".{match.group(1)}"
@@ -41,6 +66,13 @@ def _ext_from_url(url: str, content_type: str) -> str:
         "application/pdf": ".pdf",
         "application/zip": ".zip",
         "text/plain": ".txt",
+        "application/x-msdownload": ".exe",
+        "application/vnd.ms-excel": ".xls",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
+        "application/msword": ".doc",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+        "video/mp4": ".mp4",
+        "audio/mpeg": ".mp3",
     }
     return mapping.get(content_type, "")
 
