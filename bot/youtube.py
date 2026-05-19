@@ -170,35 +170,76 @@ def _has_cookies() -> bool:
 
 async def _try_ytdlp(url: str, quality: str = "audio"):
     if quality == "audio":
-        fmt = "bestaudio"
+        formats = ["bestaudio/best", "bestaudio", "worstaudio"]
+    elif quality == "1080p":
+        formats = ["bv*[height<=1080]+ba/b[height<=1080]", "bestvideo[height<=1080]+bestaudio/best[height<=1080]", "best[height<=1080]"]
+    elif quality == "720p":
+        formats = ["bv*[height<=720]+ba/b[height<=720]", "bestvideo[height<=720]+bestaudio/best[height<=720]", "best[height<=720]"]
     else:
-        fmt = "best"
+        formats = ["bv*+ba/b", "bestvideo+bestaudio/best", "best"]
     clients = ["android_embedded", "android", "web", "tv", "ios", "web_creator", "music"]
     cookies = _has_cookies()
     for client in clients:
+        for fmt in formats:
+            try:
+                _log(f"Trying yt-dlp client={client} fmt={fmt}{' (with cookies)' if cookies else ''}")
+                opts = {
+                    "format": fmt,
+                    "outtmpl": os.path.join(DOWNLOAD_DIR, f"{uuid.uuid4()}.%(ext)s"),
+                    "quiet": True,
+                    "no_warnings": True,
+                    "extractor_args": {"youtube": {"player_client": [client]}},
+                }
+                if cookies:
+                    opts["cookiefile"] = COOKIES_FILE
+                with yt_dlp.YoutubeDL(opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
+                    file_path = ydl.prepare_filename(info)
+                    if os.path.exists(file_path):
+                        _log(f"SUCCESS via yt-dlp client={client} fmt={fmt}")
+                        return file_path, info.get("title", "video")
+                    found = _find_downloaded_file()
+                    if found:
+                        _log(f"SUCCESS via yt-dlp client={client} fmt={fmt}")
+                        return found, info.get("title", "video")
+            except Exception as e:
+                _log(f"yt-dlp client={client} fmt={fmt} failed: {e}")
+    return None, None
+
+
+async def _try_ytdlp_ga(url: str, quality: str = "audio"):
+    _log("Trying ytdl.ga API...")
+    endpoints = [
+        "https://ytdl.ga/handler.php",
+        "https://najemi.cz/ytdl/handler.php",
+    ]
+    for endpoint in endpoints:
         try:
-            _log(f"Trying yt-dlp client={client}{' (with cookies)' if cookies else ''}")
-            opts = {
-                "format": fmt,
-                "outtmpl": os.path.join(DOWNLOAD_DIR, f"{uuid.uuid4()}.%(ext)s"),
-                "quiet": True,
-                "no_warnings": True,
-                "extractor_args": {"youtube": {"player_client": [client]}},
-            }
-            if cookies:
-                opts["cookiefile"] = COOKIES_FILE
-            with yt_dlp.YoutubeDL(opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                file_path = ydl.prepare_filename(info)
-                if os.path.exists(file_path):
-                    _log(f"SUCCESS via yt-dlp client={client}")
-                    return file_path, info.get("title", "video")
-                found = _find_downloaded_file()
-                if found:
-                    _log(f"SUCCESS via yt-dlp client={client}")
-                    return found, info.get("title", "video")
+            async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+                r = await client.get(endpoint, params={"url": url})
+                if r.status_code != 200:
+                    _log(f"ytdl.ga {endpoint} returned {r.status_code}")
+                    continue
+                data = r.json() if r.headers.get("content-type", "").startswith("application/json") else r.text
+                if isinstance(data, dict):
+                    dl_url = data.get("url") or data.get("download") or data.get("link")
+                else:
+                    dl_url = str(data).strip()
+                if not dl_url or dl_url == url:
+                    continue
+                ext = ".mp4"
+                if quality == "audio":
+                    ext = ".mp3"
+                filename = f"{uuid.uuid4()}{ext}"
+                filepath = os.path.join(DOWNLOAD_DIR, filename)
+                r2 = await client.get(dl_url, follow_redirects=True, timeout=120)
+                if r2.status_code == 200:
+                    with open(filepath, "wb") as f:
+                        f.write(r2.content)
+                    _log(f"SUCCESS via ytdl.ga ({endpoint})")
+                    return filepath, "YouTube Video"
         except Exception as e:
-            _log(f"yt-dlp client={client} failed: {e}")
+            _log(f"ytdl.ga {endpoint} failed: {e}")
     return None, None
 
 
@@ -228,6 +269,10 @@ async def download_yt(url: str, quality: str = "audio"):
         result = await _try_ytdlp(url, quality)
         if result[0]:
             return result
+
+    result = await _try_ytdlp_ga(url, quality)
+    if result[0]:
+        return result
 
     result = await _try_piped(url, quality)
     if result[0]:
