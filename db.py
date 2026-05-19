@@ -122,7 +122,7 @@ async def get_all_users():
 async def get_stats_summary():
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
-        total = (await db.execute("SELECT COUNT(*) as c FROM users")).fetchone()
+        total = await (await db.execute("SELECT COUNT(*) as c FROM users")).fetchone()
         cursor = await db.execute("SELECT action, COUNT(*) as count FROM stats GROUP BY action")
         stats_rows = await cursor.fetchall()
         return total, stats_rows
