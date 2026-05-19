@@ -3,7 +3,6 @@ import sys
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -14,7 +13,6 @@ from web.routes import router as web_router
 
 app = FastAPI(title="MultiBot")
 
-app.mount("/static", StaticFiles(directory="web/static"), name="static")
 app.include_router(web_router)
 
 
