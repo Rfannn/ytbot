@@ -164,15 +164,20 @@ async def _try_cobalt(url: str):
     return None, None
 
 
+def _has_cookies() -> bool:
+    return os.path.exists(COOKIES_FILE) and os.path.getsize(COOKIES_FILE) > 0
+
+
 async def _try_ytdlp(url: str, quality: str = "audio"):
     if quality == "audio":
         fmt = "bestaudio"
     else:
         fmt = "best"
-    clients = ["web", "android", "tv", "ios", "web_creator"]
+    clients = ["android_embedded", "android", "web", "tv", "ios", "web_creator", "music"]
+    cookies = _has_cookies()
     for client in clients:
         try:
-            _log(f"Trying yt-dlp client={client}")
+            _log(f"Trying yt-dlp client={client}{' (with cookies)' if cookies else ''}")
             opts = {
                 "format": fmt,
                 "outtmpl": os.path.join(DOWNLOAD_DIR, f"{uuid.uuid4()}.%(ext)s"),
@@ -180,7 +185,7 @@ async def _try_ytdlp(url: str, quality: str = "audio"):
                 "no_warnings": True,
                 "extractor_args": {"youtube": {"player_client": [client]}},
             }
-            if os.path.exists(COOKIES_FILE):
+            if cookies:
                 opts["cookiefile"] = COOKIES_FILE
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(url, download=True)
@@ -218,6 +223,11 @@ async def get_video_info(url: str):
 
 async def download_yt(url: str, quality: str = "audio"):
     _log(f"Starting download: url={url}, quality={quality}")
+
+    if _has_cookies():
+        result = await _try_ytdlp(url, quality)
+        if result[0]:
+            return result
 
     result = await _try_piped(url, quality)
     if result[0]:

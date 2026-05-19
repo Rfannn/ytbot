@@ -1,10 +1,11 @@
 import os
+import httpx
 from bot.bale_api import (
     send_message, send_document, send_chat_action, answer_callback_query,
     edit_message_text, MENU_BUTTONS, YOUTUBE_QUALITY, BACK_TO_MENU,
-    make_keyboard,
+    make_keyboard, get_file, get_file_link,
 )
-from bot.youtube import get_video_info, download_yt
+from bot.youtube import get_video_info, download_yt, COOKIES_FILE
 from bot.filedl import download_file, cleanup_file
 from bot.chatgpt import ask_gpt
 from db import (
@@ -54,12 +55,44 @@ async def _ensure_user(msg):
     return bale_id
 
 
+async def _download_bale_file(file_id: str) -> bytes | None:
+    try:
+        file_info = await get_file(file_id)
+        file_path = file_info.get("result", {}).get("file_path")
+        if not file_path:
+            return None
+        url = get_file_link(file_path)
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.get(url)
+            if r.status_code == 200:
+                return r.content
+    except Exception as e:
+        print(f"Error downloading file from Bale: {e}")
+    return None
+
+
 async def _handle_message(msg):
     bale_id = await _ensure_user(msg)
     chat_id = _chat_id(msg)
     text = _extract_text(msg)
-
     mode = await get_chat_mode(bale_id)
+
+    doc = msg.get("document")
+    if doc and mode == "youtube":
+        file_name = doc.get("file_name", "")
+        if file_name.lower() in ("cookies.txt", "cookies") or file_name.lower().endswith("cookies.txt"):
+            content = await _download_bale_file(doc["file_id"])
+            if content:
+                os.makedirs(os.path.dirname(COOKIES_FILE), exist_ok=True)
+                with open(COOKIES_FILE, "wb") as f:
+                    f.write(content)
+                await send_message(chat_id, "✅ YouTube cookies saved! Now send a YouTube link to download.")
+                await log_stat("cookies_uploaded", bale_id)
+            else:
+                await send_message(chat_id, "❌ Failed to download the file. Try again.")
+            return
+        await send_message(chat_id, "Send a file named **cookies.txt** to upload YouTube cookies, or send a YouTube link.", parse_mode="Markdown")
+        return
 
     # ChatGPT mode
     if mode == "chatgpt" and text:
@@ -79,6 +112,19 @@ async def _handle_message(msg):
 
     # YouTube mode
     if mode == "youtube" and text:
+        if text == "🍪 Upload Cookies":
+            await send_message(chat_id,
+                "📤 *How to export YouTube cookies:*\n\n"
+                "1. Install a browser extension:\n"
+                "   • Chrome: *Get cookies.txt* (from Chrome Web Store)\n"
+                "   • Firefox: *cookies.txt* (from Firefox Add-ons)\n"
+                "2. Go to https://www.youtube.com and log in\n"
+                "3. Click the extension icon → *Export* cookies\n"
+                "4. Send the exported **cookies.txt** file to this bot\n\n"
+                "After uploading, try downloading a video again.",
+                parse_mode="Markdown"
+            )
+            return
         await send_chat_action(chat_id, "typing")
         if "youtube.com" in text or "youtu.be" in text:
             try:
@@ -89,7 +135,7 @@ async def _handle_message(msg):
             except Exception as e:
                 await send_message(chat_id, f"❌ Could not process link: {str(e)}")
         else:
-            await send_message(chat_id, "Please send a valid YouTube link.")
+            await send_message(chat_id, "Please send a valid YouTube link.\n\nYou can also type *🍪 Upload Cookies* to upload YouTube cookies.", parse_mode="Markdown")
         return
 
     # File download mode
