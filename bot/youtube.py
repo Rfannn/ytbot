@@ -50,15 +50,10 @@ async def get_video_info(url: str):
 async def download_yt(url: str, quality: str = "audio"):
     if quality == "audio":
         opts = _get_ydl_opts("bestaudio/best", "mp3")
-        opts["postprocessors"] = [{
-            "key": "FFmpegExtractAudio",
-            "preferredcodec": "mp3",
-            "preferredquality": "192",
-        }]
     elif quality == "720p":
-        opts = _get_ydl_opts("bestvideo[height<=720]+bestaudio/best[height<=720]", "mp4")
+        opts = _get_ydl_opts("best[height<=720]", "mp4")
     elif quality == "1080p":
-        opts = _get_ydl_opts("bestvideo[height<=1080]+bestaudio/best[height<=1080]", "mp4")
+        opts = _get_ydl_opts("best[height<=1080]", "mp4")
     else:
         opts = _get_ydl_opts("best", "mp4")
 
