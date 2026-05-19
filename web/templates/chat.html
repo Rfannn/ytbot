@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}ChatGPT{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto py-8">
+    <h1 class="text-3xl font-bold mb-2">🤖 ChatGPT</h1>
+    <p class="text-gray-400 mb-6">Chat with the AI assistant.</p>
+    <div class="bg-gray-800 rounded-xl p-4 h-96 overflow-y-auto mb-4" id="chat-box">
+        {% for msg in messages %}
+        <div class="mb-3 {% if msg.role == 'user' %}text-right{% endif %}">
+            <span class="inline-block p-3 rounded-lg {% if msg.role == 'user' %}bg-purple-600{% else %}bg-gray-700{% endif %}">
+                {{ msg.content }}
+            </span>
+        </div>
+        {% endfor %}
+    </div>
+    <form id="chat-form" class="flex gap-2">
+        <input type="text" name="message" placeholder="Type your message..." required autocomplete="off"
+               class="flex-1 p-3 rounded bg-gray-800 border border-gray-700 focus:border-purple-500 outline-none">
+        <button type="submit" class="p-3 bg-purple-600 rounded hover:bg-purple-500 font-semibold">Send</button>
+    </form>
+</div>
+<script>
+document.getElementById('chat-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = e.target.querySelector('input[name="message"]');
+    const msg = input.value.trim();
+    if (!msg) return;
+    input.value = '';
+    const box = document.getElementById('chat-box');
+    box.innerHTML += `<div class="mb-3 text-right"><span class="inline-block p-3 rounded-lg bg-purple-600">${msg}</span></div>`;
+    box.scrollTop = box.scrollHeight;
+    const res = await fetch('/chat', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({message: msg}) });
+    const data = await res.json();
+    box.innerHTML += `<div class="mb-3"><span class="inline-block p-3 rounded-lg bg-gray-700">${data.reply}</span></div>`;
+    box.scrollTop = box.scrollHeight;
+});
+</script>
+{% endblock %}

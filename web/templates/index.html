@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}MultiBot - Home{% endblock %}
+{% block content %}
+<div class="text-center py-12">
+    <h1 class="text-4xl font-bold mb-4">Multi-Purpose Bot</h1>
+    <p class="text-gray-400 text-lg mb-8">YouTube downloader, file downloader, and ChatGPT — all in one.</p>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+        <a href="/youtube" class="block p-6 bg-gray-800 rounded-xl hover:bg-gray-700 transition">
+            <div class="text-4xl mb-3">🎬</div>
+            <h2 class="text-xl font-semibold">YouTube Downloader</h2>
+            <p class="text-gray-400 text-sm mt-2">Download YouTube videos as MP3 or MP4</p>
+        </a>
+        <a href="/filedl" class="block p-6 bg-gray-800 rounded-xl hover:bg-gray-700 transition">
+            <div class="text-4xl mb-3">📁</div>
+            <h2 class="text-xl font-semibold">File Downloader</h2>
+            <p class="text-gray-400 text-sm mt-2">Download any file from a direct URL</p>
+        </a>
+        <a href="/chat" class="block p-6 bg-gray-800 rounded-xl hover:bg-gray-700 transition">
+            <div class="text-4xl mb-3">🤖</div>
+            <h2 class="text-xl font-semibold">ChatGPT</h2>
+            <p class="text-gray-400 text-sm mt-2">Chat with AI assistant</p>
+        </a>
+    </div>
+</div>
+{% endblock %}

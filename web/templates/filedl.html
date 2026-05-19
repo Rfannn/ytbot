@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}File Downloader{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto py-8">
+    <h1 class="text-3xl font-bold mb-2">📁 File Downloader</h1>
+    <p class="text-gray-400 mb-6">Paste a direct download link to download any file.</p>
+    <form method="POST" action="/filedl" class="space-y-4">
+        <input type="url" name="url" placeholder="https://example.com/file.pdf" required
+               class="w-full p-3 rounded bg-gray-800 border border-gray-700 focus:border-purple-500 outline-none">
+        <button type="submit" class="w-full p-3 bg-purple-600 rounded hover:bg-purple-500 font-semibold">Download</button>
+    </form>
+    {% if error %}
+    <div class="mt-4 p-3 bg-red-900/50 border border-red-700 rounded text-red-300">{{ error }}</div>
+    {% endif %}
+    {% if result %}
+    <div class="mt-4 p-4 bg-gray-800 rounded">
+        <p class="text-green-400 mb-2">✅ File downloaded ({{ result.size }})</p>
+        {% if result.download_url %}
+        <a href="{{ result.download_url }}" class="inline-block p-2 bg-purple-600 rounded hover:bg-purple-500">Download File</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block content %}
+<div class="py-8">
+    <h1 class="text-3xl font-bold mb-6">🛠️ Admin Dashboard</h1>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="p-6 bg-gray-800 rounded-xl">
+            <h3 class="text-gray-400 text-sm">Total Users</h3>
+            <p class="text-3xl font-bold">{{ total_users }}</p>
+        </div>
+        <div class="p-6 bg-gray-800 rounded-xl">
+            <h3 class="text-gray-400 text-sm">Total Downloads</h3>
+            <p class="text-3xl font-bold">{{ total_downloads }}</p>
+        </div>
+        <div class="p-6 bg-gray-800 rounded-xl">
+            <h3 class="text-gray-400 text-sm">ChatGPT Messages</h3>
+            <p class="text-3xl font-bold">{{ chatgpt_count }}</p>
+        </div>
+    </div>
+
+    <h2 class="text-2xl font-bold mb-4">Users</h2>
+    <div class="overflow-x-auto">
+        <table class="w-full text-left bg-gray-800 rounded-xl">
+            <thead>
+                <tr class="border-b border-gray-700">
+                    <th class="p-3">ID</th>
+                    <th class="p-3">Bale ID</th>
+                    <th class="p-3">Username</th>
+                    <th class="p-3">Name</th>
+                    <th class="p-3">Admin</th>
+                    <th class="p-3">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr class="border-b border-gray-700">
+                    <td class="p-3">{{ u.id }}</td>
+                    <td class="p-3">{{ u.bale_id }}</td>
+                    <td class="p-3">{{ u.username or '-' }}</td>
+                    <td class="p-3">{{ u.first_name or '-' }}</td>
+                    <td class="p-3">{{ '✅' if u.is_admin else '❌' }}</td>
+                    <td class="p-3">
+                        <form method="POST" action="/admin/toggle-admin" class="inline">
+                            <input type="hidden" name="bale_id" value="{{ u.bale_id }}">
+                            <button type="submit" class="text-sm text-purple-400 hover:text-purple-300">
+                                {{ 'Remove Admin' if u.is_admin else 'Make Admin' }}
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
