@@ -8,29 +8,16 @@ os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 COOKIES_FILE = os.path.join(DATA_DIR, "cookies.txt")
 
 
-def _cookies_opts():
-    if os.path.exists(COOKIES_FILE):
-        print(f"[youtube] Using cookies from {COOKIES_FILE}")
-        return {"cookiefile": COOKIES_FILE}
-    print(f"[youtube] No cookies file at {COOKIES_FILE}")
-    return {}
-
-
-def _base_opts():
-    return {
-        "quiet": True,
-        "no_warnings": True,
-        "extractor_args": {"youtube": {"player_client": ["android", "tv"]}},
-    }
-
-
 def _get_ydl_opts(format_spec: str):
     opts = {
         "format": format_spec,
         "outtmpl": os.path.join(DOWNLOAD_DIR, f"{uuid.uuid4()}.%(ext)s"),
+        "quiet": True,
+        "no_warnings": True,
+        "extractor_args": {"youtube": {"player_client": ["web"]}},
     }
-    opts.update(_base_opts())
-    opts.update(_cookies_opts())
+    if os.path.exists(COOKIES_FILE):
+        opts["cookiefile"] = COOKIES_FILE
     return opts
 
 
@@ -43,8 +30,7 @@ def _find_downloaded_file():
 
 
 async def get_video_info(url: str):
-    ydl_opts = _base_opts()
-    ydl_opts.update(_cookies_opts())
+    ydl_opts = _get_ydl_opts("best")
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
         return {
@@ -57,13 +43,14 @@ async def get_video_info(url: str):
 
 async def download_yt(url: str, quality: str = "audio"):
     if quality == "audio":
-        formats = ["bestaudio", "best"]
+        formats = ["bestaudio[ext=m4a]", "bestaudio", "best"]
     else:
-        formats = ["best", "worst"]
+        formats = ["bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"]
 
     for fmt in formats:
         try:
             opts = _get_ydl_opts(fmt)
+            opts["merge_output_format"] = "mp4"
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(url, download=True)
                 file_path = ydl.prepare_filename(info)
