@@ -38,13 +38,12 @@ def _extract_filename(headers, url: str, content_type: str) -> str:
         if name:
             return name
 
-    from urllib.parse import urlparse
+    from urllib.parse import urlparse, unquote
     path = urlparse(url).path
     if "/" in path:
         name = path.rsplit("/", 1)[-1]
         if name and "." in name:
-            import html
-            return html.unquote(name)
+            return unquote(name)
 
     ext = _ext_from_url(url, content_type)
     if ext:
