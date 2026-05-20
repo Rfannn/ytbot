@@ -13,9 +13,6 @@ async def download_file(url: str):
         content_length = int(r.headers.get("content-length", 0))
         content_type = r.headers.get("content-type", "application/octet-stream")
 
-        if content_length > MAX_FILE_SIZE:
-            return None, "File too large (max 50MB)", None, content_length
-
         r = await client.get(url)
         if r.status_code != 200:
             return None, f"Failed to download (HTTP {r.status_code})", None, None
